@@ -7,7 +7,10 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        self.op_table = {'0b10000010': self.LDI, '0b10000011': self.LD, '0b00000001': self.HLT, '0b01000111': self.PRN, '0b10100010': self.MLT, '0b1010000': self.CALL}
+        self.op_table = {'0b10000010': self.LDI, '0b10000011': self.LD, '0b00000001': self.HLT, 
+                         '0b01000111': self.PRN, '0b10100010': self.MLT, '0b01000101': self.PUSH,
+                         '0b01000110': self.POP, 
+                         '0b1010000': self.CALL}
         self.ram = [0] * 256
         self.reg = [0] * 8
         self.pc = 0
@@ -23,8 +26,7 @@ class CPU:
                     num = comment_split[0].strip()
                     if num == '':
                         continue
-                    val = int(num)
-                    code = f"0b{f'{val}'.zfill(8)}"
+                    code = f"0b{num.zfill(8)}"
                     self.ram[address] = code
                     address += 1
 
@@ -88,7 +90,7 @@ class CPU:
         if MAR < len(self.ram) and MAR >= 0:
             return self.ram[MAR]
         else:
-            print(f"ERROR: Memory address is outside of RAM range!\nCurrent address: {self.pc}")
+            print(f"ERROR: Memory address {MAR} is outside of RAM range!\nCurrent address: {self.pc}")
             self.running = False
 
     def ram_write(self, MDR, MAR):
@@ -99,8 +101,9 @@ class CPU:
             self.running = False
 
     def reset_registers(self):
-        for i in range(8):
+        for i in range(7):
             self.reg[i] = 0
+        self.reg[7] = len(self.ram) - 1
         self.pc = 0
             
     def LDI(self, operand_a, operand_b):
@@ -136,8 +139,9 @@ class CPU:
         self.pc += 2
 
     def CALL(self, operand_a, operand_b):
-        self.reg[7] = self.pc
-        self.pc = operand_a
+        pass
+        # self.reg[7] = self.pc
+        # self.pc = operand_a
 
     def PUSH(self, operand_a, operand_b):
         val = self.reg[operand_a]
@@ -146,7 +150,7 @@ class CPU:
         self.pc += 1
 
     def POP(self, operand_a, operand_b):
-        if self.reg[7] < 255:
+        if self.reg[7] < 256:
             self.reg[7] += 1
             val = self.ram_read(self.reg[7])
             self.reg[operand_a] = val
@@ -163,18 +167,16 @@ class CPU:
         operand_a = 0
         operand_a = 0
         while self.running:
-            print(self.pc)
             ir = self.ram_read(self.pc)
             if ir not in self.op_table:
                 self.running = False
                 print(f"ERROR: Unknown instruction \"{ir}\" called!\nCurrent address: {self.pc}")
-                break
             elif self.pc >= len(self.ram):
                 print(f"ERROR: PC went above length of ram!\nCurrent address: {self.pc}")
                 self.running = False
-                break
-            operand_a = int(str(self.ram_read(self.pc + 1)), 2)
-            operand_b = int(str(self.ram_read(self.pc + 1)), 2)
-            self.op_table[ir](operand_a, operand_b)
-            self.pc += 1
+            else:
+                operand_a = int(str(self.ram_read(self.pc + 1)), 2)
+                operand_b = int(str(self.ram_read(self.pc + 1)), 2)
+                self.op_table[ir](operand_a, operand_b)
+                self.pc += 1
         print("Halting...")
