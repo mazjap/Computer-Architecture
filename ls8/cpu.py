@@ -144,9 +144,9 @@ class CPU:
         # self.pc = operand_a
 
     def PUSH(self, operand_a, operand_b):
-        val = self.reg[operand_a]
-        self.reg[7] -= 1
+        val = self.reg[operand_a] # 0
         self.ram_write(val, self.reg[7])
+        self.reg[7] -= 1
         self.pc += 1
 
     def POP(self, operand_a, operand_b):
@@ -176,7 +176,7 @@ class CPU:
                 self.running = False
             else:
                 operand_a = int(str(self.ram_read(self.pc + 1)), 2)
-                operand_b = int(str(self.ram_read(self.pc + 1)), 2)
+                operand_b = int(str(self.ram_read(self.pc + 2)), 2)
                 self.op_table[ir](operand_a, operand_b)
                 self.pc += 1
         print("Halting...")
