@@ -8,8 +8,7 @@ class CPU:
     def __init__(self):
         """Construct a new CPU."""
         self.op_table = {'0b10000010': self.LDI, '0b10000011': self.LD, '0b00000001': self.HLT, 
-                         '0b01000111': self.PRN, '0b10100010': self.MLT, '0b01000101': self.PUSH,
-                         '0b01000110': self.POP, 
+                         '0b01000111': self.PRN, '0b01000101': self.PUSH, '0b01000110': self.POP, 
                          '0b1010000': self.CALL}
         self.ram = [0] * 256
         self.reg = [0] * 8
@@ -57,14 +56,99 @@ class CPU:
             self.ram[address] = instruction
             address += 1
 
-    def alu(self, op, reg_a, reg_b):
+    def alu(self, operand_a, operand_b):
         """ALU operations."""
-
-        if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        ir = self.ram_read(self.pc)
+        if ir == '0b10100000': # ADD
+            self.reg[operand_a] += self.reg[operand_b]
+            self.pc += 2
+        elif ir == '0b10101000': # AND
+            val_a = self.reg[operand_a]
+            val_b = self.reg[operand_b]
+            new_val = '0b'
+            for index in range(2, len()):
+                if val_a[index] == '1' and val_b[index] == '1':
+                    new_val += '1'
+                else:
+                    new_val += '0'
+            self.reg[operand_a] = new_val
+            self.pc += 2
+        elif ir == '0b10100111': # CMP
+            val_a = self.reg[operand_a]
+            val_b = self.reg[operand_b]
+            new_val = '0b00000'
+            if val_a == val_b:
+                new_val += '001'
+            elif val_a > val_b:
+                new_val += '010'
+            else:
+                new_val += '100'
+            self.reg[operand_a] = new_val
+            self.pc += 2
+        elif ir == '0b01100110': # DEC
+            self.reg[operand_a] -= 1
+            self.pc += 1
+        elif ir == '0b10100011': # DIV
+            self.reg[operand_a] = self.reg[operand_a] / self.reg[operand_b]
+            self.pc += 2
+        elif ir == '0b01100101': # INC
+            self.reg[operand_a] += 1
+            self.pc += 1
+        elif ir == '0b10100100': # MOD
+            self.reg[operand_a] = self.reg[operand_a] % self.reg[operand_b]
+            self.pc += 2
+        elif ir == '0b10100010': # MUL
+            self.reg[operand_a] = self.reg[operand_a] * self.reg[operand_b]
+            self.pc += 2
+        elif ir == '0b01101001': # NOT
+            val = self.reg[operand_a]
+            new_val = '0b'
+            for index in range(2, len(val)):
+                if val[index] == '1':
+                    new_val += '0'
+                else:
+                    new_val += '1'
+            self.reg[operand_a] = new_val
+            self.pc += 1
+        elif ir == '0b10101010': # OR
+            val_a = self.reg[operand_a]
+            val_b = self.reg[operand_b]
+            new_val = '0b'
+            for index in range(2, len(val_a)):
+                if val_a[index] == '1' or val_b[index] == '1':
+                    new_val += '1'
+                else:
+                    new_val += '0'
+            self.reg[operand_a] = new_val
+            self.pc += 2
+        elif ir == '0b10101100': # SHL
+            val_a = self.reg[operand_a]
+            val_b = eval(self.reg[operand_b])
+            new_val = "0b" + val_a[2 + val_b:]
+            self.reg[operand_a] += "0" * val_b
+            self.pc += 2
+        elif ir == '0b10101101': # SHR
+            val_a = self.reg[operand_a]
+            val_b = eval(self.reg[operand_b])
+            new_val = "0b" + "0" * val_b + val_a[:-val_b]
+            self.reg[operand_a] += new_val
+            self.pc += 2
+        elif ir == '0b10100001': # SUB
+            self.reg[operand_a] -= self.reg[operand_b]
+            self.pc += 2
+        elif ir == '0b10101011': # XOR
+            val_a = self.reg[operand_a]
+            val_b = self.reg[operand_b]
+            new_val = '0b'
+            for index in range(2, len(val_a)):
+                if (val_a[index] == '1' or val_b[index] == '1') and not (val_a[index] == '1' and val_b[index] == '1'):
+                    new_val += '1'
+                else:
+                    new_val += '0'
+            self.reg[operand_a] = new_val
+            self.pc += 2
         else:
-            raise Exception("Unsupported ALU operation")
+            raise Exception(f"ERROR: Unknown operation \"{ir}\" called!\nCurrent address: {self.pc}")
 
     def trace(self):
         """
@@ -134,10 +218,6 @@ class CPU:
         print(self.reg[int(operand_a)])
         self.pc += 1
 
-    def MLT(self, operand_a, operand_b):
-        self.reg[operand_a] = self.reg[operand_a] * self.reg[operand_b]
-        self.pc += 2
-
     def CALL(self, operand_a, operand_b):
         pass
         # self.reg[7] = self.pc
@@ -163,20 +243,20 @@ class CPU:
         """Run the CPU."""
         self.reset_registers()
         self.running = True
-        ir = ""
-        operand_a = 0
-        operand_a = 0
         while self.running:
-            ir = self.ram_read(self.pc)
-            if ir not in self.op_table:
-                self.running = False
-                print(f"ERROR: Unknown instruction \"{ir}\" called!\nCurrent address: {self.pc}")
-            elif self.pc >= len(self.ram):
+            if self.pc >= len(self.ram):
                 print(f"ERROR: PC went above length of ram!\nCurrent address: {self.pc}")
                 self.running = False
-            else:
-                operand_a = int(str(self.ram_read(self.pc + 1)), 2)
-                operand_b = int(str(self.ram_read(self.pc + 2)), 2)
+                break
+            
+            ir = self.ram_read(self.pc)
+            operand_a = int(str(self.ram_read(self.pc + 1)), 2)
+            operand_b = int(str(self.ram_read(self.pc + 2)), 2)
+
+            if ir in self.op_table:
                 self.op_table[ir](operand_a, operand_b)
-                self.pc += 1
+            else:
+                self.alu(operand_a, operand_b)
+            
+            self.pc += 1
         print("Halting...")
