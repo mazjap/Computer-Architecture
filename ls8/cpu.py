@@ -9,7 +9,7 @@ class CPU:
         """Construct a new CPU."""
         self.op_table = {'0b10000010': self.LDI, '0b10000011': self.LD, '0b00000001': self.HLT, 
                          '0b01000111': self.PRN, '0b01000101': self.PUSH, '0b01000110': self.POP, 
-                         '0b1010000': self.CALL}
+                         '0b01010000': self.CALL, '0b00010001': self.RET}
         self.ram = [0] * 256
         self.reg = [0] * 8
         self.pc = 0
@@ -26,6 +26,7 @@ class CPU:
                     if num == '':
                         continue
                     code = f"0b{num.zfill(8)}"
+                    # print(code)
                     self.ram[address] = code
                     address += 1
 
@@ -56,9 +57,8 @@ class CPU:
             self.ram[address] = instruction
             address += 1
 
-    def alu(self, operand_a, operand_b):
+    def alu(self, ir, operand_a, operand_b):
         """ALU operations."""
-        ir = self.ram_read(self.pc)
         if ir == '0b10100000': # ADD
             self.reg[operand_a] += self.reg[operand_b]
             self.pc += 2
@@ -219,9 +219,14 @@ class CPU:
         self.pc += 1
 
     def CALL(self, operand_a, operand_b):
-        pass
-        # self.reg[7] = self.pc
-        # self.pc = operand_a
+        print(self.reg[operand_a])
+        self.ram_write(self.pc, self.reg[7])
+        self.reg[7] -= 1
+        self.pc = self.reg[operand_a] - 1
+
+    def RET(self, operand_a, operand_b):
+        self.pc = self.ram_read(self.reg[7])
+        self.reg[7] += 1
 
     def PUSH(self, operand_a, operand_b):
         val = self.reg[operand_a] # 0
@@ -256,7 +261,7 @@ class CPU:
             if ir in self.op_table:
                 self.op_table[ir](operand_a, operand_b)
             else:
-                self.alu(operand_a, operand_b)
+                self.alu(ir, operand_a, operand_b)
             
             self.pc += 1
         print("Halting...")
