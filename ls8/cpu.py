@@ -219,14 +219,13 @@ class CPU:
         self.pc += 1
 
     def CALL(self, operand_a, operand_b):
-        print(self.reg[operand_a])
-        self.ram_write(self.pc, self.reg[7])
+        self.ram_write(self.pc + 1, self.reg[7])
         self.reg[7] -= 1
         self.pc = self.reg[operand_a] - 1
 
     def RET(self, operand_a, operand_b):
-        self.pc = self.ram_read(self.reg[7])
         self.reg[7] += 1
+        self.pc = self.ram_read(self.reg[7])
 
     def PUSH(self, operand_a, operand_b):
         val = self.reg[operand_a] # 0
